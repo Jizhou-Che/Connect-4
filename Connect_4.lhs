@@ -149,10 +149,35 @@ It is assumed that X will play the first move.
 Minimax algorithm.
 
 
-The structure of the game tree.
-NOTE: The parameterised type could be Board or (Board, Player), with Player marking the potential winner of this board.
+The structure of a general game tree.
 
-> data Tree a = Node a [Tree a]
+> data Tree a = Node a [Tree a] deriving Show
+
+
+This function expands a board to its possible next moves.
+
+> expand :: Board -> [Board]
+> expand b | winning b = []
+>          | otherwise = map (\(Just b') -> b') $ filter (\mb' -> mb' /= Nothing) [move (turn b) n b | n <- [0 .. cols - 1]]
+
+
+This function grows the game tree to the next level.
+
+> grow :: Tree Board -> Tree Board
+> grow (Node b []) = Node b [Node b' [] | b' <- expand b]
+> grow (Node b ts) = Node b $ map grow ts
+
+
+This funcrion labels a game tree with the potential winners.
+
+> label :: Tree Board -> Tree (Board, Player)
+> label (Node b []) | winning b = case turn b of X -> Node (b, O) []
+>                                                O -> Node (b, X) []
+>                   | otherwise = Node (b, B) []
+> label (Node b ts) = case turn b of X -> Node (b, maximum ls) lts
+>                                    O -> Node (b, minimum ls) lts
+>                                    where ls = map (\(Node (_, l) _) -> l) lts
+>                                          lts = map label ts
 
 ----------------------------------------------------------------------
 
