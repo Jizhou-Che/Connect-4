@@ -8,6 +8,8 @@ scyjc1@nottingham.ac.uk
 Library imports.
 
 > import Data.List
+> import Text.Read
+> import System.IO
 
 ----------------------------------------------------------------------
 
@@ -154,12 +156,40 @@ NOTE: The parameterised type could be Board or (Board, Player), with Player mark
 
 ----------------------------------------------------------------------
 
-Boards for testing purposes.
+The main game.
 
-> testBoard :: Board
-> testBoard = [[X, B, B, O, O, B, B],
->              [X, X, X, O, O, B, B],
->              [O, O, O, X, X, B, B],
->              [O, O, O, X, O, B, B],
->              [X, X, X, O, X, X, B],
->              [X, X, X, O, O, O, B]]
+
+The entry point of the game.
+
+> main :: IO ()
+> main = play blank ""
+
+
+This function plays a move at each iteration.
+It disgards invalid inputs or moves, and checks for the winning condition.
+
+> play :: Board -> String -> IO ()
+> play b s = do
+>   showBoard b
+>   putStrLn s
+>   putStr $ show (turn b) ++ " is next: "
+>   hFlush stdout
+>   x <- getLine
+>   let mi = readMaybe x :: Maybe Int
+>   if mi == Nothing then do
+>     play b "Please input a column number!"
+>   else do
+>     let Just i = mi
+>     if i < 0 || i >= cols then do
+>       play b "Column number out of bounds!"
+>     else do
+>       let mb' = move (turn b) i b
+>       if mb' == Nothing then do
+>         play b "That column is full!"
+>       else do
+>         let Just b' = mb'
+>         if winning b' then do
+>           showBoard b'
+>           putStrLn $ show (turn b) ++ " wins!"
+>         else do
+>           play b' ""
