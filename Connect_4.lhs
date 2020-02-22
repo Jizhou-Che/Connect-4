@@ -9,6 +9,7 @@ Library imports.
 
 > import Data.List
 > import Text.Read
+> import System.Random
 > import System.IO
 
 ----------------------------------------------------------------------
@@ -137,6 +138,12 @@ This function checks whether the board satisfies the winning condition.
 > winning b = any connected (horizontals b ++ verticals b ++ diagonals0 b)
 
 
+This function checks whether the board satisfies the draw condition.
+
+> draw :: Board -> Bool
+> draw b = (not . winning) b && and [full n b | n <- [0 .. cols - 1]]
+
+
 This function checks who is next to play on the board.
 It is assumed that X will play the first move.
 
@@ -168,16 +175,25 @@ This function grows the game tree to the next level.
 > grow (Node b ts) = Node b $ map grow ts
 
 
-This funcrion labels a game tree with the potential winners.
+This function labels a game tree with the potential winners.
+TODO: More explanations on the logic.
 
-> label :: Tree Board -> Tree (Board, Player)
-> label (Node b []) | winning b = case turn b of X -> Node (b, O) []
->                                                O -> Node (b, X) []
->                   | otherwise = Node (b, B) []
-> label (Node b ts) = case turn b of X -> Node (b, maximum ls) lts
->                                    O -> Node (b, minimum ls) lts
->                                    where ls = map (\(Node (_, l) _) -> l) lts
+> label :: Tree Board -> Tree (Player, Board)
+> label (Node b []) | winning b = case turn b of X -> Node (O, b) []
+>                                                O -> Node (X, b) []
+>                   | otherwise = Node (B, b) []
+> label (Node b ts) = case turn b of X -> Node (maximum ls, b) lts
+>                                    O -> Node (minimum ls, b) lts
+>                                    where ls = map (\(Node (l, _) _) -> l) lts
 >                                          lts = map label ts
+
+
+This function gets the labeled options of the next move.
+
+> options :: Board -> [Board]
+> options b = map snd $ filter (\(p, _) -> p == (\(Node (pp, _) _) -> pp) lt) neighbours
+>             where neighbours = map (\(Node o _) -> o) $ (\(Node _ ts) -> ts) lt
+>                   lt = label (iterate grow (Node b []) !! depth)
 
 ----------------------------------------------------------------------
 
@@ -187,34 +203,120 @@ The main game.
 The entry point of the game.
 
 > main :: IO ()
-> main = play blank ""
+> main = selectMode
 
 
-This function plays a move at each iteration.
-It disgards invalid inputs or moves, and checks for the winning condition.
+> selectMode :: IO ()
+> selectMode = do
+>   putStrLn "1: HUMAN - COMPUTER"
+>   putStrLn "2: HUMAN - HUMAN"
+>   putStr "> "
+>   hFlush stdout
+>   x <- getLine
+>   let mi = readMaybe x :: Maybe Int
+>   if mi == Nothing then do
+>     putStrLn "Invalid option!"
+>     selectMode
+>   else do
+>     if mi == Just 1 then do
+>       putStrLn ""
+>       selectPlayer
+>     else if mi == Just 2 then do
+>       putStrLn ""
+>       playHH blank ""
+>     else do
+>       putStrLn "Invalid option!"
+>       selectMode
 
-> play :: Board -> String -> IO ()
-> play b s = do
+
+> selectPlayer :: IO ()
+> selectPlayer = do
+>   putStrLn "1: PLAY AS X"
+>   putStrLn "2: PLAY AS O"
+>   putStr "> "
+>   hFlush stdout
+>   x <- getLine
+>   let mi = readMaybe x :: Maybe Int
+>   if mi == Nothing then do
+>     putStrLn "Invalid option!"
+>     selectPlayer
+>   else do
+>     if mi == Just 1 then do
+>       putStrLn ""
+>       b <- humanMove blank ""
+>       playHC b ""
+>     else if mi == Just 2 then do
+>       putStrLn ""
+>       playHC blank ""
+>     else do
+>       putStrLn "Invalid option!"
+>       selectPlayer
+
+
+> humanMove :: Board -> String -> IO Board
+> humanMove b s = do
+>   putStrLn ""
 >   showBoard b
 >   putStrLn s
 >   putStr $ show (turn b) ++ " is next: "
 >   hFlush stdout
 >   x <- getLine
+>   putStrLn ""
 >   let mi = readMaybe x :: Maybe Int
 >   if mi == Nothing then do
->     play b "Please input a column number!"
+>     humanMove b "Please input a column number!"
 >   else do
 >     let Just i = mi
 >     if i < 0 || i >= cols then do
->       play b "Column number out of bounds!"
+>       humanMove b "Column number out of bounds!"
 >     else do
 >       let mb' = move (turn b) i b
 >       if mb' == Nothing then do
->         play b "That column is full!"
+>         humanMove b "That column is full!"
 >       else do
 >         let Just b' = mb'
->         if winning b' then do
->           showBoard b'
->           putStrLn $ show (turn b) ++ " wins!"
->         else do
->           play b' ""
+>         return b'
+
+
+> playHC :: Board -> String -> IO ()
+> playHC b s = do
+>   showBoard b
+>   putStrLn "Computer is thinking..."
+>   b' <- cmove b
+>   if winning b' then do
+>     showBoard b'
+>     putStrLn $ show (turn b) ++ " wins!"
+>   else if draw b' then do
+>     showBoard b'
+>     putStrLn "Draw!"
+>   else do
+>     bb <- humanMove b' ""
+>     if winning bb then do
+>       showBoard bb
+>       putStrLn $ show (turn b') ++ " wins!"
+>     else if draw bb then do
+>       showBoard bb
+>       putStrLn "Draw!"
+>     else do
+>       playHC bb ""
+
+
+> playHH :: Board -> String -> IO ()
+> playHH b s = do
+>   b' <- humanMove b s
+>   if winning b' then do
+>     showBoard b'
+>     putStrLn $ show (turn b) ++ " wins!"
+>   else if draw b' then do
+>     showBoard b'
+>     putStrLn "Draw!"
+>   else do
+>     playHH b' ""
+
+
+> cmove :: Board -> IO Board
+> cmove b = do
+>   let opts = options b
+>   r <- randomRIO (0, length opts - 1)
+>   let b' = opts !! r
+>   return b'
