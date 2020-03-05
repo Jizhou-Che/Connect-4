@@ -9,9 +9,6 @@ Library imports.
 
 > import Data.Char
 > import Data.List
-
-% > import Text.Read
-
 > import System.Random
 > import System.IO
 
@@ -142,22 +139,6 @@ The diagonals on the opposite direction is achieved by reversing the rows first.
 
 > diagonals :: Board -> [Row]
 > diagonals b = diags b ++ diags (reverse b)
-
-
-% The following three functions are not used but are kept just for logical reference.
-
-% > diagonals1 :: Board -> [Row]
-% > diagonals1 b = concat $ split (transpose (chop (cols + 1) (concat b))) cols
-% >                where split [] _ = []
-% >                      split rs n = (take n (head rs) : chop cols (drop n (head rs))) : split (tail rs) (n - 1)
-
-% > diagonals2 :: Board -> [Row]
-% > diagonals2 b = concat $ split (transpose (chop (cols - 1) (concat b))) 1
-% >                where split [] _ = []
-% >                      split rs n = (take n (head rs) : chop cols (drop n (head rs))) : split (tail rs) (n + 1)
-
-% > diagonals :: Board -> [Row]
-% > diagonals b = diagonals1 b ++ diagonals2 b
 
 
 This function checks whether a row satisfies the winning conditon.
@@ -314,123 +295,3 @@ This function gets a valid column number from the user.
 >     getCol "Please input a valid column number: "
 >   else do
 >     return $ read xs
-
-
-% > main :: IO ()
-% > main = selectMode
-
-
-% > selectMode :: IO ()
-% > selectMode = do
-% >   putStrLn "1: HUMAN - COMPUTER"
-% >   putStrLn "2: HUMAN - HUMAN"
-% >   putStr "> "
-% >   hFlush stdout
-% >   x <- getLine
-% >   let mi = readMaybe x :: Maybe Int
-% >   if mi == Nothing then do
-% >     putStrLn "Invalid option!"
-% >     selectMode
-% >   else do
-% >     if mi == Just 1 then do
-% >       putStrLn ""
-% >       selectPlayer
-% >     else if mi == Just 2 then do
-% >       putStrLn ""
-% >       playHH blank ""
-% >     else do
-% >       putStrLn "Invalid option!"
-% >       selectMode
-
-
-% > selectPlayer :: IO ()
-% > selectPlayer = do
-% >   putStrLn "1: PLAY AS X"
-% >   putStrLn "2: PLAY AS O"
-% >   putStr "> "
-% >   hFlush stdout
-% >   x <- getLine
-% >   let mi = readMaybe x :: Maybe Int
-% >   if mi == Nothing then do
-% >     putStrLn "Invalid option!"
-% >     selectPlayer
-% >   else do
-% >     if mi == Just 1 then do
-% >       putStrLn ""
-% >       b <- humanMove blank ""
-% >       playHC b ""
-% >     else if mi == Just 2 then do
-% >       putStrLn ""
-% >       playHC blank ""
-% >     else do
-% >       putStrLn "Invalid option!"
-% >       selectPlayer
-
-
-% > humanMove :: Board -> String -> IO Board
-% > humanMove b s = do
-% >   putStrLn ""
-% >   showBoard b
-% >   putStrLn s
-% >   putStr $ show (turn b) ++ " is next: "
-% >   hFlush stdout
-% >   x <- getLine
-% >   putStrLn ""
-% >   let mi = readMaybe x :: Maybe Int
-% >   if mi == Nothing then do
-% >     humanMove b "Please input a column number!"
-% >   else do
-% >     let Just i = mi
-% >     if i < 0 || i >= cols then do
-% >       humanMove b "Column number out of bounds!"
-% >     else do
-% >       let mb' = move (turn b) i b
-% >       if mb' == Nothing then do
-% >         humanMove b "That column is full!"
-% >       else do
-% >         let Just b' = mb'
-% >         return b'
-
-
-% > playHC :: Board -> String -> IO ()
-% > playHC b s = do
-% >   showBoard b
-% >   putStrLn "Computer is thinking..."
-% >   b' <- cmove b
-% >   if winning b' then do
-% >     showBoard b'
-% >     putStrLn $ show (turn b) ++ " wins!"
-% >   else if draw b' then do
-% >     showBoard b'
-% >     putStrLn "Draw!"
-% >   else do
-% >     bb <- humanMove b' ""
-% >     if winning bb then do
-% >       showBoard bb
-% >       putStrLn $ show (turn b') ++ " wins!"
-% >     else if draw bb then do
-% >       showBoard bb
-% >       putStrLn "Draw!"
-% >     else do
-% >       playHC bb ""
-
-
-% > playHH :: Board -> String -> IO ()
-% > playHH b s = do
-% >   b' <- humanMove b s
-% >   if winning b' then do
-% >     showBoard b'
-% >     putStrLn $ show (turn b) ++ " wins!"
-% >   else if draw b' then do
-% >     showBoard b'
-% >     putStrLn "Draw!"
-% >   else do
-% >     playHH b' ""
-
-
-% > cmove :: Board -> IO Board
-% > cmove b = do
-% >   let opts = options b
-% >   r <- randomRIO (0, length opts - 1)
-% >   let b' = opts !! r
-% >   return b'
